@@ -1,0 +1,29 @@
+#!/bin/sh
+
+CUE=$1
+WAV=$2
+
+usage()
+{
+    echo -e "Usage:\n\t $0 <CUE-file> <WAV-file>"
+}
+
+if [ "X" = "X$CUE" ]; then
+    echo "ERROR: <CUE-file> is required"
+    usage
+    exit 1
+fi
+
+if [ "X" = "X$WAV" ]; then
+    echo "ERROR: <WAV-file> is required"
+    usage
+    exit 1
+fi
+
+if [ \! -e "$CUE" -o \! -e "$WAV" ]; then
+    echo "Files not found"
+    usage
+    exit 1
+fi
+
+cuebreakpoints "$CUE" | shnsplit -n "%02d" "$WAV"

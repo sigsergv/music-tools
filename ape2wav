@@ -1,0 +1,12 @@
+#!/bin/sh
+
+FILENAME=$1
+
+if [ "X$FILENAME" = "X" ]; then
+    echo filename is required
+    exit 1
+fi
+
+WAV_FILENAME=`echo $FILENAME|sed -e 's/.ape$/.wav/'`
+
+mac "$FILENAME" "$WAV_FILENAME" -d

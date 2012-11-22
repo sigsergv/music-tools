@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# convert all flac files in the current dir
+
+for i in *.wav; do
+    BASE=`basename "$i" .wav`
+    lame -q 0 -m s -cbr -b 320 "$i" "$BASE.mp3"
+done
+

@@ -7,4 +7,4 @@ They're for linux, of course.
 
 For Debian/Ubuntu you need to install the following packages:
 
-    apt-get install shntool cuetools flac lame wavpack
+    apt-get install shntool cuetools flac lame wavpack monkeys-audio

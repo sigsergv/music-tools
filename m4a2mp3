@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# convert all AAC files in the current dir
+
+for i in *.m4a; do
+    BASE=`basename "$i" .m4a`
+    faad -o - "$i" | lame -q 0 -m s -cbr -b 320 - "$BASE.mp3"
+done

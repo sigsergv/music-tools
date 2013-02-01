@@ -1,0 +1,3 @@
+#!/bin/sh
+
+metaflac --export-picture-to=cover.jpg "$1"

@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+
+from optparse import OptionParser
+from sys import exit
+import codecs
+import eyeD3
+
+parser = OptionParser(usage='%prog --tags-file=TAGS_FILE MP3_FILE')
+parser.add_option('-f', '--tags-file', dest='tags_file',
+    help='File that contains tags values in the form of lines TAGNAME=TAGVALUE')
+
+(options, args) = parser.parse_args()
+
+if options.tags_file is None:
+    print('Option --tags-file is required')
+    exit(1)
+
+if len(args) != 1:
+    print('One file must be provided as an argument.')
+    exit(1)
+
+mp3_filename = args[0]
+
+try:
+    _ = codecs.open(options.tags_file, encoding='utf8')
+    taglines = [x.strip() for x in _]
+except IOError:
+    print('Cannot open file "{}"'.format(options.tags_file) )
+    exit(1)
+
+tags = {}
+for _ in taglines:
+    p = _.find('=')
+    if p == -1:
+        cotinue
+    tag, value = _[:p], _[p+1:]
+    tags[tag] = value
+
+'''
+Known tags: comment, album, title, artist, track, year, tracknumber, genre
+'''
+tags_def_map = {
+    'artist': 'setArtist',
+    'comment': 'addComment',
+    'album': 'setAlbum',
+    'title': 'setTitle',
+    'year': 'setDate'
+    #'tracknumber': 'setTrackNum',
+    #'genre': ''
+}
+
+mp3tag = eyeD3.Tag()
+mp3tag.link(mp3_filename)
+mp3tag.header.setVersion(eyeD3.ID3_V2_3)
+
+for tagname, value in tags.iteritems():
+    if tagname not in tags_def_map:
+        continue
+    getattr(mp3tag, tags_def_map[tagname])(value)
+    
+# genre special processing 
+if 'genre' in tags:
+    mp3tag.setTextFrame('TCON', tags['genre'])
+
+# tracknum special processing
+if 'tracknumber' in tags:
+    try:
+        tn = int(tags['tracknumber'])
+        mp3tag.setTrackNum( (tn, None) )
+    except ValueError:
+        pass
+
+    
+mp3tag.update()

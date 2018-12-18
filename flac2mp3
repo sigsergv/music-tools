@@ -3,6 +3,7 @@
 # convert all flac files in the current dir
 TEMP_RAW=$(tempfile)
 for i in *.flac; do
+    rm -f $TEMP_RAW
     BASE=`basename "$i" .flac`
     metaflac --export-tags-to=current-track.tags.txt "$i"
     flac -d "$i" -o $TEMP_RAW

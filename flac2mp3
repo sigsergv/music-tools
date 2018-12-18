@@ -1,11 +1,13 @@
-#!/bin/sh
+#!/bin/bash
 
 # convert all flac files in the current dir
-
+TEMP_RAW=$(tempfile)
 for i in *.flac; do
     BASE=`basename "$i" .flac`
     metaflac --export-tags-to=current-track.tags.txt "$i"
-    flac -c -d "$i" | lame -q 0 -m s -cbr -b 320 - "$BASE.mp3"
+    flac -c -d "$i" $TEMP_RAW
+    lame -q 0 -m s -cbr -b 320 $TEMP_RAW "$BASE.mp3"
     tagmp3fromfile --tags-file=current-track.tags.txt "$BASE.mp3"
     rm -f current-track.tags.txt
 done
+rm -f $TEMP_RAW

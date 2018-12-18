@@ -3,7 +3,7 @@
 from optparse import OptionParser
 from sys import exit
 import codecs
-import eyeD3
+import eyed3
 
 parser = OptionParser(usage='%prog --tags-file=TAGS_FILE MP3_FILE')
 parser.add_option('-f', '--tags-file', dest='tags_file',
@@ -19,7 +19,7 @@ if len(args) != 1:
     print('One file must be provided as an argument.')
     exit(1)
 
-mp3_filename = args[0]
+mp3_filename = args[0].decode('utf8')
 
 try:
     _ = codecs.open(options.tags_file, encoding='utf8')
@@ -49,26 +49,21 @@ tags_def_map = {
     #'genre': ''
 }
 
-mp3tag = eyeD3.Tag()
-mp3tag.link(mp3_filename)
-mp3tag.header.setVersion(eyeD3.ID3_V2_3)
+audio = eyed3.load(mp3_filename)
+audio.tag = eyed3.id3.tag.Tag()
+audio.tag.title = tags[u'title']
+audio.tag.album = tags[u'album']
+audio.tag.artist = tags[u'artist']
+audio.tag.track_num = int(tags[u'tracknumber'])
 
-for tagname, value in tags.iteritems():
-    if tagname not in tags_def_map:
-        continue
-    getattr(mp3tag, tags_def_map[tagname])(value)
-    
-# genre special processing 
-if 'genre' in tags:
-    mp3tag.setTextFrame('TCON', tags['genre'])
+audio.tag.comments.set(tags[u'COMMENT'])
 
-# tracknum special processing
-if 'tracknumber' in tags:
-    try:
-        tn = int(tags['tracknumber'])
-        mp3tag.setTrackNum( (tn, None) )
-    except ValueError:
-        pass
+fr = eyed3.id3.frames.TextFrame(b'TCON')
+fr.text = tags[u'GENRE']
+audio.tag.frame_set[b'TCON'] = fr
 
-    
-mp3tag.update()
+fr = eyed3.id3.frames.TextFrame(b'TDRC')
+fr.text = tags[u'DATE']
+audio.tag.frame_set[b'TDRC'] = fr
+
+audio.tag.save()

@@ -19,7 +19,7 @@ if len(args) != 1:
     print('One file must be provided as an argument.')
     exit(1)
 
-mp3_filename = args[0]
+mp3_filename = args[0].decode('utf8')
 
 try:
     _ = codecs.open(options.tags_file, encoding='utf8')

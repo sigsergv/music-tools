@@ -1,14 +1,114 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-# convert all flac files in the current dir
-TEMP_RAW=$(tempfile)
-for i in *.flac; do
-    rm -f $TEMP_RAW
-    BASE=`basename "$i" .flac`
-    metaflac --export-tags-to=current-track.tags.txt "$i"
-    flac -d "$i" -o $TEMP_RAW
-    lame -q 0 -m s -cbr -b 320 $TEMP_RAW "$BASE.mp3"
-    tagmp3fromfile --tags-file=current-track.tags.txt "$BASE.mp3"
-    rm -f current-track.tags.txt
-done
-rm -f $TEMP_RAW
+import os
+import tempfile
+import subprocess
+
+from sys import exit
+
+try:
+    from mutagen.flac import (FLAC, FLACNoHeaderError)
+    # from mutagen.mp3 import (MP3, )
+    from mutagen.id3 import (ID3, TIT2, TDRC, COMM, TRCK, WOAF, TCON, TPE1, TALB, TPE2)
+except ImportError:
+    print('ERROR: missing package, install `python3-mutagen`')
+    exit(1)
+
+def msg(m):
+    print('# ' + m)
+
+def f2m(fn):
+    base, ext = os.path.splitext(fn)
+    return base + '.mp3'
+
+# current_dir = os.getcwd()
+
+# supported tags:
+# title
+# artist
+# album
+# comment
+# date
+# genre
+# albumartist
+# tracknumber
+# website
+
+SUPPORTED_TAGS = ('title', 'artist', 'album', 'comment', 'date', 'genre', 'albumartist', 'tracknumber', 'website')
+ID3_MAPPINGS = {
+    'title': TIT2,
+    'artist': TPE1,
+    'album': TALB,
+    'comment': COMM,
+    'date': TDRC,
+    'genre': TCON,
+    'albumartist': TPE2,
+    'tracknumber': TRCK,
+    'website': WOAF
+}
+for fn in os.listdir('.'):
+    if not os.path.isfile(fn):
+        continue
+    if not fn.endswith('.flac'):
+        continue
+    # remember file metadata
+    try:
+        fmd = FLAC(fn)
+    except FLACNoHeaderError:
+        msg('File `{0}` is not a FLAC file'.format(fn))
+        continue
+    tags = {}
+    for tag_name in SUPPORTED_TAGS:
+        if tag_name in fmd:
+            tags[tag_name] = fmd[tag_name][0]
+    mp3_fn = f2m(fn)
+    try:
+        os.unlink(mp3_fn)
+    except FileNotFoundError:
+        pass
+    _osh, wav_temp_fn = tempfile.mkstemp(suffix='.wav', dir='.')
+    # decode flac to wav
+    msg('converting `{0}` to `{1}`'.format(fn, mp3_fn))
+    result = subprocess.run(['flac', '-f', '-d', fn, '-o', wav_temp_fn], capture_output=True)
+    if result.returncode != 0:
+        msg('ERROR: Failed to decode file `{0}`, command returned: {1}'.format(fn, result.stderr))
+        exit(2)
+    # convert wav to mp3
+    result = subprocess.run(['lame', '-q', '0', '-m', 's', '-cbr', '-b', '320', '--id3v2-only', wav_temp_fn, mp3_fn], capture_output=True)
+    if result.returncode != 0:
+        msg('ERROR: Failed to encode WAV file `{0}` to MP3, command returned: {1}'.format(fn, result.stderr))
+        exit(3)
+    os.unlink(wav_temp_fn)
+    # restore metadata in MP3
+    mmd = ID3()
+    mmd.load(mp3_fn)
+    for t,v in tags.items():
+        if t not in ID3_MAPPINGS:
+            continue
+        if t == 'genre':
+            # special handling
+            print(v)
+            mmd.add(ID3_MAPPINGS[t](encoding=3, text=v))
+            # mmd.add(ID3_MAPPINGS[t](encoding=3, genres=[v]))
+        else:
+            mmd.add(ID3_MAPPINGS[t](encoding=3, text=v))
+    mmd.save()
+
+    # convert FLAC -> MP3
+
+msg('All done!')
+
+# #!/bin/bash
+
+# # convert all flac files in the current dir
+# TEMP_RAW=$(tempfile)
+# for i in *.flac; do
+#     rm -f $TEMP_RAW
+#     BASE=`basename "$i" .flac`
+#     metaflac --export-tags-to=current-track.tags.txt "$i"
+#     flac -d "$i" -o $TEMP_RAW
+#     lame -q 0 -m s -cbr -b 320 $TEMP_RAW "$BASE.mp3"
+#     tagmp3fromfile --tags-file=current-track.tags.txt "$BASE.mp3"
+#     rm -f current-track.tags.txt
+# done
+# rm -f $TEMP_RAW

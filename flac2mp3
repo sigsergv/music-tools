@@ -34,7 +34,6 @@ def f2m(fn):
 # tracknumber
 # website
 
-SUPPORTED_TAGS = ('title', 'artist', 'album', 'comment', 'date', 'genre', 'albumartist', 'tracknumber', 'website')
 ID3_MAPPINGS = {
     'title': TIT2,
     'artist': TPE1,
@@ -46,6 +45,7 @@ ID3_MAPPINGS = {
     'tracknumber': TRCK,
     'website': WOAF
 }
+SUPPORTED_TAGS = ID3_MAPPINGS.keys()
 for fn in os.listdir('.'):
     if not os.path.isfile(fn):
         continue

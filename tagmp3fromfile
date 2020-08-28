@@ -32,7 +32,7 @@ tags = {}
 for _ in taglines:
     p = _.find('=')
     if p == -1:
-        cotinue
+        continue
     tag, value = _[:p], _[p+1:]
     tags[tag] = value
 

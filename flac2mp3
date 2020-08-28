@@ -87,7 +87,6 @@ for fn in os.listdir('.'):
             continue
         if t == 'genre':
             # special handling
-            print(v)
             mmd.add(ID3_MAPPINGS[t](encoding=3, text=v))
             # mmd.add(ID3_MAPPINGS[t](encoding=3, genres=[v]))
         else:

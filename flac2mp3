@@ -9,7 +9,7 @@ from sys import exit
 try:
     from mutagen.flac import (FLAC, FLACNoHeaderError)
     # from mutagen.mp3 import (MP3, )
-    from mutagen.id3 import (ID3, TIT2, TDRC, COMM, TRCK, WOAF, TCON, TPE1, TALB, TPE2)
+    from mutagen.id3 import (ID3, TIT2, TDRC, COMM, TRCK, TCON, TPE1, TALB, TPE2, WOAF, WOAR)
 except ImportError:
     print('ERROR: missing package, install `python3-mutagen`')
     exit(1)
@@ -43,7 +43,7 @@ ID3_MAPPINGS = {
     'genre': TCON,
     'albumartist': TPE2,
     'tracknumber': TRCK,
-    'website': WOAF
+    'website': WOAR
 }
 SUPPORTED_TAGS = ID3_MAPPINGS.keys()
 for fn in os.listdir('.'):
@@ -85,13 +85,17 @@ for fn in os.listdir('.'):
     for t,v in tags.items():
         if t not in ID3_MAPPINGS:
             continue
-        if t == 'genre':
+
+        if t == 'website':
+            frame = ID3_MAPPINGS[t](url=v)
+            mmd.add(frame)
+        elif t == 'genre':
             # special handling
             mmd.add(ID3_MAPPINGS[t](encoding=3, text=v))
             # mmd.add(ID3_MAPPINGS[t](encoding=3, genres=[v]))
         else:
             mmd.add(ID3_MAPPINGS[t](encoding=3, text=v))
-    mmd.save()
+    mmd.save(v2_version=3)
 
     # convert FLAC -> MP3
 

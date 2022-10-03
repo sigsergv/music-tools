@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+
+## 
+## sudo apt install cuetools flac shntool
+## 
+
+import argparse
+import os
+import shutil
+import subprocess
+import tempfile
+
+from sys import exit
+
+## functions
+def tempfilename(suffix):
+    fd, name = tempfile.mkstemp(suffix=suffix, dir=BASEDIR)
+    os.close(fd)
+    return name
+    
+
+TMP_FILES = []
+REQUIRED_BINARIES = ['flac', 'cuebreakpoints', 'shnsplit', 'lame']
+
+def cleanup():
+    for f in TMP_FILES:
+        os.unlink(f)
+
+for b in REQUIRED_BINARIES:
+    if shutil.which(b) is None:
+        print('"{0}" binary is missing'.format(b))
+        cleanup()
+        exit(2)
+
+parser = argparse.ArgumentParser(description='Convert CUE + WAV/FLAC to tracks in MP3 and FLAC formats')
+
+parser.add_argument('cuefile', help='CUE file path')
+parser.add_argument('audiofile', help='Audio file, FLAC or WAV')
+args = parser.parse_args()
+
+CUEFILE = args.cuefile
+
+if not os.path.isfile(CUEFILE) or not os.path.isfile(args.audiofile):
+    print('CUE or audio file not found')
+    cleanup()
+    exit(2)
+
+BASEDIR = os.path.abspath(os.path.dirname(args.cuefile))
+WAVFILE = args.audiofile
+x, aext = os.path.splitext(args.audiofile.lower())
+
+for x in ['wav', 'mp3', 'flac']:
+    p = os.path.join(BASEDIR, x)
+    shutil.rmtree(p)
+    os.mkdir(p)
+
+if aext == '.flac':
+    # decode to WAV first
+    print('>> Decode .flac to .wav')
+    name = tempfilename('.wav')
+    os.unlink(name)
+    TMP_FILES.append(name)
+    WAVFILE = name
+    subprocess.run(['flac', '-d', '-o', WAVFILE, args.audiofile])
+elif aext != '.wav':
+    print('Only WAV and FALC audio files supported as input files')
+    cleanup()
+    exit(2)
+
+
+print('>> Detect split points')
+# cuebreakpoints "$CUE" | shnsplit -n "%02d" "$WAV"
+cuepointsfile = tempfilename('.cuebp')
+TMP_FILES.append(cuepointsfile)
+
+res = subprocess.run(['cuebreakpoints', args.cuefile], capture_output=True)
+if res.returncode != 0:
+    print('CUE breakpoints detection failed')
+    cleanup()
+    exit(2)
+
+with open(cuepointsfile, 'wb') as fp:
+    fp.write(res.stdout)
+
+WAVTRACKSDIR = os.path.join(BASEDIR, 'wav')
+print('>> split WAV file using CUE file')
+subprocess.run(['shnsplit', '-n', '%02d', '-d', WAVTRACKSDIR, '-f', cuepointsfile, WAVFILE])
+
+WAVTRACKS = []
+for x in os.listdir(WAVTRACKSDIR):
+    if x.endswith('.wav'):
+        WAVTRACKS.append(os.path.join(WAVTRACKSDIR, x))
+
+FLACTRACKSDIR = os.path.join(BASEDIR, 'flac')
+print('>> compressing FLAC tracks')
+for x in WAVTRACKS:
+    base, ext = os.path.splitext(os.path.basename(x))
+    out_file = os.path.join(FLACTRACKSDIR, base+'.flac')
+    subprocess.run(['flac', '-8', '-o', out_file, x])
+
+MP3TRACKSDIR = os.path.join(BASEDIR, 'mp3')
+print('>> compressing MP3 tracks')
+for x in WAVTRACKS:
+    base, ext = os.path.splitext(os.path.basename(x))
+    out_file = os.path.join(MP3TRACKSDIR, base+'.mp3')
+    subprocess.run(['lame', '-q', '0', '-m', 's', '-cbr', '-b', '320', '--id3v2-only', x, out_file])
+
+shutil.rmtree(WAVTRACKSDIR)
+cleanup()
+print('>> All done')

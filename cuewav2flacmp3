@@ -51,7 +51,8 @@ x, aext = os.path.splitext(args.audiofile.lower())
 
 for x in ['wav', 'mp3', 'flac']:
     p = os.path.join(BASEDIR, x)
-    shutil.rmtree(p)
+    if os.path.exists(p):
+        shutil.rmtree(p)
     os.mkdir(p)
 
 if aext == '.flac':
